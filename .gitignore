@@ -1,0 +1,12 @@
+*.jpg
+*.png
+*.xml
+*.h5
+*.mat
+*.data
+*.pdf
+*.txt
+JPEGImages
+Annotations
+系服务器
+__pycache__
