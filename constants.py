@@ -3,7 +3,7 @@ import os
 # DataLoader
 IMAGE_DIR = "JPEGImages"
 ANNOTATION_DIR = "Annotations"
-BATCH_SIZE = 32
+BATCH_SIZE = 4
 TRAIN_TEST_SPLIT = "2012_001051"
 TRAIN_BOX_DIR = os.path.join("data", "train", "box")
 TRAIN_LABEL_DIR = os.path.join("data", "train", "label")

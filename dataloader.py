@@ -212,23 +212,24 @@ def bbox_to_center(box):
 
     # box: box dictionary
     # return: augmented box dictionary
-    xmin = box["xmin"]
-    ymin = box["ymin"]
-    xmax = box["xmax"]
-    ymax = box["ymax"]
-    width = box["width"]
-    height = box["height"]
+    bbox = box.copy()
+    xmin = bbox["xmin"]
+    ymin = bbox["ymin"]
+    xmax = bbox["xmax"]
+    ymax = bbox["ymax"]
+    width = bbox["width"]
+    height = bbox["height"]
     # convert
     cx = (xmin + xmax) / 2.0 / width
     cy = (ymin + ymax) / 2.0 / height
     w = (xmax - xmin) / width
     h = (ymax - ymin) / height
     # update
-    box["cx"] = cx
-    box["cy"] = cy
-    box["w"] = w
-    box["h"] = h
-    return box
+    bbox["cx"] = cx
+    bbox["cy"] = cy
+    bbox["w"] = w
+    bbox["h"] = h
+    return bbox
 
 def get_boxes(name, annotation_files):
 
