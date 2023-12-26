@@ -2,6 +2,7 @@
 *.png
 *.xml
 *.h5
+*.pth
 *.mat
 *.data
 *.pdf
