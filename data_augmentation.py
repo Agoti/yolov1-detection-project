@@ -1,9 +1,10 @@
+from yolo_utils import *
 import cv2
 import numpy as np
-from yolo_utils import *
-
+import copy
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 
 def random_flip(image, boxes):
     """
@@ -28,12 +29,12 @@ def random_hue(image, boxes, delta=18.0):
     """
     if np.random.randint(2):
         random_hue = np.random.uniform(-delta, delta)
-        image[:, :, 0] = (image[:, :, 0] + random_hue) % 180
+        image[:, :, 0] = (image[:, :, 0] + random_hue)
         image[:, :, 0][image[:, :, 0] > 360.0] -= 360.0
         image[:, :, 0][image[:, :, 0] < 0.0] += 360.0
     return image, boxes
 
-def random_saturation(image, boxes, lower=0.5, upper=1.5):
+def random_saturation(image, boxes, lower=0.8, upper=1.2):
     """
     Randomly change the saturation of the image
     Input:
@@ -45,6 +46,7 @@ def random_saturation(image, boxes, lower=0.5, upper=1.5):
     if np.random.randint(2):
         random_saturation = np.random.uniform(lower, upper)
         image[:, :, 1] *= random_saturation
+        image[:, :, 1][image[:, :, 1] > 1.0] = 1.0
     return image, boxes
 
 def random_value(image, boxes, lower=0.5, upper=1.5):
@@ -59,6 +61,7 @@ def random_value(image, boxes, lower=0.5, upper=1.5):
     if np.random.randint(2):
         random_value = np.random.uniform(lower, upper)
         image[:, :, 2] *= random_value
+        image[:, :, 2][image[:, :, 2] > 255.0] = 255.0
     return image, boxes
 
 def random_brightness(image, boxes, delta=32):
@@ -85,7 +88,7 @@ def random_expand(image, boxes):
     """
     if 1:
         height, width, depth = image.shape
-        ratio = np.random.uniform(1, 1.2)
+        ratio = np.random.uniform(1, 2)
         left = np.random.uniform(0, width * ratio - width)
         top = np.random.uniform(0, height * ratio - height)
         expand_image = np.zeros((int(height * ratio), int(width * ratio), depth), dtype=image.dtype)
@@ -107,7 +110,9 @@ def random_sample_crop(image, boxes):
         image: RGB float32 image
         boxes: list of dictionaries containing bounding box coordinates and class
     """
-    modes = (None, (0.3, 1.1), (0.7, 1.1), (0.9, 1.1), (-0.1, 1.1))
+    modes = (None,
+             (0.3, 1.1), (0.7, 1.1), (0.9, 1.1), 
+             (-0.1, 1.1))
     # modes = (None, (-0.1, 1.1))
     if len(boxes) == 0:
         return image, boxes
@@ -187,6 +192,8 @@ def augmentation(image, boxes):
     image, boxes = random_sample_crop(image, boxes)
     image, boxes = random_flip(image, boxes)
     image = image.astype(np.uint8)
+    for box in boxes:
+        box = bbox_to_center(box)
     return image, boxes
 
 def overlap(box, crop):
@@ -200,35 +207,23 @@ def overlap(box, crop):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from dataloader import DataLoader
     np.random.seed(40)
-    image = cv2.imread("test.jpg")
-    boxes = [
-                {"xmin": 10, "ymin": 10, "xmax": 100, "ymax": 100,\
-               "class": "person", "confidence": 1, "width": image.shape[1], "height": image.shape[0]},\
-                {"xmin": 200, "ymin": 200, "xmax": 300, "ymax": 300,\
-                 "class": "person", "confidence": 1, "width": image.shape[1], "height": image.shape[0]}
-            ]
-    image_plot = plot_bbox_on_image(image, boxes)
-    # plot the original image
-    plt.figure()
-    plt.imshow(image_plot)
-    plt.show()
-    original_image = image.copy()
-    original_boxes = copy.deepcopy(boxes)
-    while True:
-        try:
-            image = original_image.copy()
-            boxes = copy.deepcopy(original_boxes)
-            image, boxes = augmentation(image, boxes)
-            image = plot_bbox_on_image(image, boxes)
-            # plot the augmented image
-            plt.figure()
-            plt.imshow(image)
-            plt.show()
-        except Exception as e:
-            if str(e) == "KeyboardInterrupt":
-                break
-            else:
-                print(e)
-                print(boxes)
-                continue
+    dataloader = DataLoader()
+    dataloader.load_data(max_file=100)
+    for i in range(100):
+        image = dataloader.train_images[i].copy()
+        boxes = dataloader.train_labels[i]["boxes"]
+        boxes = copy.deepcopy(boxes)
+        image, boxes = augmentation(image, boxes)
+        plt.imshow(image)
+        for box in boxes:
+            xmin = box["xmin"]
+            ymin = box["ymin"]
+            xmax = box["xmax"]
+            ymax = box["ymax"]
+            # plot bounding box, a rectangle
+            cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+        plt.imshow(image)
+        plt.show()
+

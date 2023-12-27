@@ -202,6 +202,7 @@ def yolo_loss_be(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
     loss = lambd_coord * coord_loss + obj_loss + lambd_noobj * noobj_loss + class_loss
     return loss / batch_size
 
-    
-    
+
+def dummy_loss(pred, target):
+    return torch.sum(pred - target) / pred.size()[0]
 

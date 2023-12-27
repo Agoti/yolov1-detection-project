@@ -5,6 +5,7 @@ import numpy as np
 from constants import *
 from yolo_utils import *
 
+
 def get_classes():
     # loop through annotation files
     classes = []
@@ -58,7 +59,7 @@ def get_boxes(name, annotation_files):
     
     return boxes
 
-def image_resize(image, boxes, input_side):
+def image_resize2sq(image, boxes, input_side = INPUT_SIDE):
     # pad image to square
     # resize image to input_side
     # resize bounding box

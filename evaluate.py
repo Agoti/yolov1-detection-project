@@ -9,7 +9,7 @@ import os
 import cv2
 import torch
 
-def compute_mAP(pred_boxes, GT_boxes, iou_threshold = 0.5):
+def compute_mAP(pred_boxes, GT_boxes, iou_threshold = 0.5, print_pr = False):
     # pred_boxes: list of box list of a single image
     # GT_boxes: list of box list of a single image
 
@@ -64,8 +64,9 @@ def compute_mAP(pred_boxes, GT_boxes, iou_threshold = 0.5):
         recall = np.array(recall)
         AP = np.sum((recall[1:] - recall[:-1]) * precision[:-1])
         APs[cls] = AP
-        print("AP for class {}: {}".format(cls, AP))
-        print("precision: {}, recall: {}".format(precision[-1], recall[-1]))
+        if print_pr:
+            print("AP for class {}: {:.4f}".format(cls, AP))
+            print("precision: {:.4f}, recall: {:.4f}".format(precision[-1], recall[-1]))
 
     APs = {k: v for k, v in APs.items() if v is not None}
     mAP = np.mean(np.array(list(APs.values())))
@@ -124,14 +125,14 @@ def main(is_plot=True, is_mAP=True, print_plot=100, max_train = 300):
     dl.load_data()
 
     net = Net()
-    net.load_weights("weights225-1226.pth")
+    net.load_weights("checkpoints/weights220.pth")
 
-    train_images = dl.train_images[:max_train]
-    train_boxes = [msg["boxes"] for msg in dl.train_msg[:max_train]]
-    train_names = [msg["image_name"] for msg in dl.train_msg[:max_train]]
+    train_images = [label["resized_image"] for label in dl.train_labels]
+    train_boxes = [label["resized_boxes"] for label in dl.train_labels]
+    train_names = [label["image_name"] for label in dl.train_labels]
     test_images = dl.test_images
-    test_boxes = [msg["boxes"] for msg in dl.test_msg]
-    test_names = [msg["image_name"] for msg in dl.test_msg]
+    test_boxes = [label["boxes"] for label in dl.test_labels]
+    test_names = [label["image_name"] for label in dl.test_labels]
     
     # predict on train set
     pred_boxes_list_train = net.predict(train_images)
@@ -140,19 +141,19 @@ def main(is_plot=True, is_mAP=True, print_plot=100, max_train = 300):
     
     if is_plot:
         print("Plotting on train set...")
-        plot_on_train(train_images, train_boxes, pred_boxes_list_train, train_names, TRAIN_PLOT_DIR, max_n=max_train)
+        plot_on_train(train_images, train_boxes, pred_boxes_list_train, train_names, TRAIN_PLOT_DIR)
         print("Plotting on test set...")
         plot_on_test(test_images, test_boxes, pred_boxes_list_test, test_names, TEST_PLOT_DIR)
     
     if is_mAP:
         print("Computing mAP...")
         mAP_train, APs_train = compute_mAP(pred_boxes_list_train, train_boxes)
-        mAP_test, APs_test = compute_mAP(pred_boxes_list_test, test_boxes)
+        mAP_test, APs_test = compute_mAP(pred_boxes_list_test, test_boxes, print_pr=True)
         print("mAP on train set: {}".format(mAP_train))
         print("mAP on test set: {}".format(mAP_test))
-        print("APs on train set: {}".format(APs_train))
+        # print("APs on train set: {}".format(APs_train))
         print("APs on test set: {}".format(APs_test))
         
 if __name__ == "__main__":
-    main(is_plot=False, is_mAP=True, print_plot=100, max_train=10000)
+    main(is_plot=False, is_mAP=True, print_plot=100, max_train=300)
 

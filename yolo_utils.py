@@ -1,36 +1,34 @@
 from constants import *
-from dataloader import *
-from data_augmentation import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 import numpy as np
 import cv2
-import copy
+
 
 def bbox_to_center(box):
 
     # box: box dictionary
-    # return: augmented box dictionary
-    bbox = box
-    xmin = bbox["xmin"]
-    ymin = bbox["ymin"]
-    xmax = bbox["xmax"]
-    ymax = bbox["ymax"]
-    width = bbox["width"]
-    height = bbox["height"]
+    xmin = box["xmin"]
+    ymin = box["ymin"]
+    xmax = box["xmax"]
+    ymax = box["ymax"]
+    width = box["width"]
+    height = box["height"]
     # convert
     cx = (xmin + xmax) / 2.0 / width
     cy = (ymin + ymax) / 2.0 / height
     w = (xmax - xmin) / width
     h = (ymax - ymin) / height
     # update
-    bbox["cx"] = cx
-    bbox["cy"] = cy
-    bbox["w"] = w
-    bbox["h"] = h
-    return bbox
+    box["cx"] = cx
+    box["cy"] = cy
+    box["w"] = w
+    box["h"] = h
+
+    return box
+
 
 def bbox_to_corners(box):
     # box: dictionary with keys (cx, cy, w, h)
@@ -84,7 +82,7 @@ def box2label(boxes):
     labels = labels.reshape(1, -1)
     return labels
 
-def label2box(label, threshold = 0.2):
+def label2box(label, threshold = 0.1):
     # label: numpy array of shape (N_GRID_SIDE, N_GRID_SIDE, 5 * N_BBOX + N_CLASSES)
     boxes = []
     label_confidence = np.zeros((N_GRID_SIDE, N_GRID_SIDE, N_BBOX), dtype=np.float32)
@@ -135,7 +133,9 @@ def iou(box1, box2):
     y2 = min(y1max, y2max)
     inter_area = max(0, x2 - x1) * max(0, y2 - y1)
     union_area = (x1max - x1min) * (y1max - y1min) + (x2max - x2min) * (y2max - y2min) - inter_area
-    return inter_area / union_area
+    iou_value = inter_area / (union_area + 1e-10)
+    iou_value = min(max(iou_value, 1e-10), 1)
+    return iou_value
 
 def non_max_suppression(boxes, iou_threshold = 0.5, max_boxes = 10):
     
@@ -153,7 +153,6 @@ def non_max_suppression(boxes, iou_threshold = 0.5, max_boxes = 10):
                     boxes_of_class.remove(box)
     
     return keep_boxes
-
 
 
 def plot_bbox_on_image(image, boxes):
