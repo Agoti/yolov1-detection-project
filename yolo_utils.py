@@ -110,6 +110,32 @@ def label2box(label, threshold = 0.1):
 
     return boxes
 
+def label2box_nondetectorwise(label, threshold = 0.1):
+    # label: numpy array of shape (N_GRID_SIDE, N_GRID_SIDE, 5 * N_BBOX + N_CLASSES)
+    boxes = []
+    for b in range(N_BBOX):
+        label_confidence = np.zeros((N_GRID_SIDE, N_GRID_SIDE), dtype=np.float32)
+        label_confidence[:, :] = label[:, :, 4 + 5 * b]
+        label_class_prob = label[:, :, 5 * N_BBOX:]
+        label_score = label_confidence * np.max(label_class_prob, axis=2)
+        filtering_mask = label_score > threshold
+        for i in range(N_GRID_SIDE):
+            for j in range(N_GRID_SIDE):
+                if filtering_mask[i, j]:
+                    cx = (j + label[i, j, 5 * b]) / N_GRID_SIDE
+                    cy = (i + label[i, j, 5 * b + 1]) / N_GRID_SIDE
+                    w = label[i, j, 5 * b + 2]
+                    h = label[i, j, 5 * b + 3]
+                    cls = np.argmax(label_class_prob[i, j])
+                    confidence = label_confidence[i, j]
+                    box = {"cx": cx, "cy": cy, "w": w, "h": h,\
+                            "class": CLASSES[cls], "confidence": confidence,\
+                            "width": INPUT_SIDE, "height": INPUT_SIDE}
+                    box = bbox_to_corners(box)
+                    boxes.append(box)
+
+    return boxes
+
 
 def get_train_batches(train_images, train_labels, batch_size = BATCH_SIZE):
     indices = np.arange(len(train_images))
@@ -144,13 +170,25 @@ def non_max_suppression(boxes, iou_threshold = 0.5, max_boxes = 10):
     keep_boxes = []
     for cls in CLASSES:
         boxes_of_class = [box for box in original_boxes if box["class"] == cls]
-        while boxes_of_class and len(keep_boxes) < max_boxes:
-            max_confidence_box = max(boxes_of_class, key=lambda x: x["confidence"])
-            keep_boxes.append(max_confidence_box)
-            boxes_of_class.remove(max_confidence_box)
-            for box in boxes_of_class:
-                if iou(max_confidence_box, box) > iou_threshold:
-                    boxes_of_class.remove(box)
+        l = len(boxes_of_class)
+
+        for _ in range(min(l, max_boxes)):
+            # find the box with highest confidence
+            max_confidence = 0
+            max_idx = 0
+            for i in range(len(boxes_of_class)):
+                if boxes_of_class[i]["confidence"] > max_confidence:
+                    max_confidence = boxes_of_class[i]["confidence"]
+                    max_idx = i
+            # append to keep_boxes
+            keep_boxes.append(boxes_of_class[max_idx])
+            # remove the box
+            boxes_of_class.pop(max_idx)
+            # remove boxes with iou > iou_threshold
+            boxes_of_class = [box for box in boxes_of_class if iou(box, keep_boxes[-1]) < iou_threshold]
+            # if there is no box left, break
+            if len(boxes_of_class) == 0:
+                break
     
     return keep_boxes
 

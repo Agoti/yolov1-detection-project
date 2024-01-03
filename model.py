@@ -75,45 +75,10 @@ class Net(nn.Module):
         x = x.reshape(-1, N_GRID_SIDE, N_GRID_SIDE, 5 * N_BBOX + N_CLASSES)
         return x
 
-    def fit(self, dataloader, n_epoch=10, learning_rate=0.001):
-
-        optimizer = torch.optim.SGD(self.parameters(), lr=learning_rate, momentum=0.937, weight_decay=0.0005)
-        # milestone: 70
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[70], gamma=0.1)
-        train_images = dataloader.train_images
-        train_labels = [label["label"] for label in dataloader.train_labels]
-        for epoch in range(n_epoch):
-            print("Epoch: {}".format(epoch))
-            losses = []
-            for batch_images, batch_labels in get_train_batches(train_images, train_labels):
-                # convert batch_images and batch_labels to FloatTensor
-                # move to device
-                batch_images = torch.Tensor(batch_images).to(self.device).float()
-                batch_labels = torch.Tensor(batch_labels).to(self.device).float()
-                batch_images = batch_images.permute(0, 3, 1, 2)
-                batch_labels = batch_labels.reshape(-1, N_GRID_SIDE, N_GRID_SIDE, 5 * N_BBOX + N_CLASSES)
-                pred = self.forward(batch_images)
-                loss = yolo_loss_be(pred, batch_labels)
-                # print("Loss: {}".format(loss.item()))
-                # check when loss is nan
-                if torch.isnan(loss):
-                    print("Loss is nan.")
-                    print("Epoch: {}".format(epoch))
-                    print("Pred: {}".format(pred))
-                losses.append(loss.item())
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-            scheduler.step()
-            # print loss with 2 decimal places
-            print("Loss: {:.2f}".format(np.mean(losses)))
-    
     def predict(self, test_images):
         # test_images: list of ndarrays
         # convert to a simple array
         test_images = np.array(test_images)
-        test_images = torch.Tensor(test_images).to(self.device).float()
-        test_images = test_images.permute(0, 3, 1, 2)
         # pred = self.forward(test_images)
         # send test_images in batches
         pred_boxes_list = []
@@ -125,20 +90,26 @@ class Net(nn.Module):
                     # print("Predicting batch {}/{}".format(i, n_batches))
                     pbar.update(1)
                     batch_images = test_images[i * BATCH_SIZE: (i + 1) * BATCH_SIZE]
+                    batch_images = torch.Tensor(batch_images).to(self.device).float()
+                    batch_images = batch_images.permute(0, 3, 1, 2)
                     batch_pred = self.forward(batch_images)
                     for j in range(batch_pred.size()[0]):
                         pred = batch_pred[j].detach().cpu().numpy()
                         pred_boxes = label2box(pred)
+                        # pred_boxes = label2box_nondetectorwise(pred)
                         pred_boxes = non_max_suppression(pred_boxes)
                         pred_boxes_list.append(pred_boxes)
                     del batch_images, batch_pred
             # last batch
             if len(test_images) % BATCH_SIZE != 0:
                 batch_images = test_images[n_batches * BATCH_SIZE:]
+                batch_images = torch.Tensor(batch_images).to(self.device).float()
+                batch_images = batch_images.permute(0, 3, 1, 2)
                 batch_pred = self.forward(batch_images)
                 for j in range(batch_pred.size()[0]):
                     pred = batch_pred[j].detach().cpu().numpy()
                     pred_boxes = label2box(pred)
+                    # pred_boxes = label2box_nondetectorwise(pred)
                     pred_boxes = non_max_suppression(pred_boxes)
                     pred_boxes_list.append(pred_boxes)
                 del batch_images, batch_pred

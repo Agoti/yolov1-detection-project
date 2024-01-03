@@ -86,7 +86,7 @@ def random_expand(image, boxes):
         image: RGB float32 image
         boxes: list of dictionaries containing bounding box coordinates and class
     """
-    if 1:
+    if np.random.randint(2):
         height, width, depth = image.shape
         ratio = np.random.uniform(1, 2)
         left = np.random.uniform(0, width * ratio - width)
@@ -110,9 +110,9 @@ def random_sample_crop(image, boxes):
         image: RGB float32 image
         boxes: list of dictionaries containing bounding box coordinates and class
     """
-    modes = (None,
-             (0.3, 1.1), (0.7, 1.1), (0.9, 1.1), 
-             (-0.1, 1.1))
+    modes = (None, None, None,  (-0.1, 1.1),
+            (0.3, 1.1), (0.5, 1.1),
+             (0.7, 1.1), (0.9, 1.1))
     # modes = (None, (-0.1, 1.1))
     if len(boxes) == 0:
         return image, boxes
@@ -135,8 +135,8 @@ def random_sample_crop(image, boxes):
             top = np.random.uniform(height - height_crop)
             width_crop, height_crop, left, top = int(width_crop), int(height_crop), int(left), int(top)
             box_crop = {"xmin": int(left), "ymin": int(top), "xmax": int(left + width_crop), "ymax": int(top + height_crop)}
-            iou_ = [overlap(box_crop, box) for box in boxes]
-            if min_iou > max(iou_) or max_iou < min(iou_):
+            iou_ = [overlap(box, box_crop) for box in boxes]
+            if min_iou > min(iou_) or max_iou < max(iou_):
                 continue
             current_image = current_image[int(top):int(top + height_crop), int(left):int(left + width_crop), :]
             new_boxes = []

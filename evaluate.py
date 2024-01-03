@@ -116,44 +116,44 @@ def plot_on_train(train_images, train_boxes, pred_boxes, image_names, plot_dir, 
         if i == max_n:
             break
 
-
-def main(is_plot=True, is_mAP=True, print_plot=100, max_train = 300):
-    """
-    Evaluate the model on the test set
-    """
-    dl = DataLoader()
-    dl.load_data()
-
-    net = Net()
-    net.load_weights("checkpoints/weights220.pth")
-
-    train_images = [label["resized_image"] for label in dl.train_labels]
-    train_boxes = [label["resized_boxes"] for label in dl.train_labels]
-    train_names = [label["image_name"] for label in dl.train_labels]
-    test_images = dl.test_images
-    test_boxes = [label["boxes"] for label in dl.test_labels]
-    test_names = [label["image_name"] for label in dl.test_labels]
-    
-    # predict on train set
-    pred_boxes_list_train = net.predict(train_images)
-    # predict on test set
-    pred_boxes_list_test = net.predict(test_images)
-    
-    if is_plot:
-        print("Plotting on train set...")
-        plot_on_train(train_images, train_boxes, pred_boxes_list_train, train_names, TRAIN_PLOT_DIR)
-        print("Plotting on test set...")
-        plot_on_test(test_images, test_boxes, pred_boxes_list_test, test_names, TEST_PLOT_DIR)
-    
-    if is_mAP:
-        print("Computing mAP...")
-        mAP_train, APs_train = compute_mAP(pred_boxes_list_train, train_boxes)
-        mAP_test, APs_test = compute_mAP(pred_boxes_list_test, test_boxes, print_pr=True)
-        print("mAP on train set: {}".format(mAP_train))
-        print("mAP on test set: {}".format(mAP_test))
-        # print("APs on train set: {}".format(APs_train))
-        print("APs on test set: {}".format(APs_test))
-        
 if __name__ == "__main__":
-    main(is_plot=False, is_mAP=True, print_plot=100, max_train=300)
+
+    def main(is_plot=True, is_mAP=True, print_plot=100, max_train = 300):
+        """
+        Evaluate the model on the test set
+        """
+        dl = DataLoader()
+        dl.load_data()
+
+        net = Net()
+        net.load_weights("checkpoints/weights220.pth")
+
+        train_images = [label["resized_image"] for label in dl.train_labels]
+        train_boxes = [label["resized_boxes"] for label in dl.train_labels]
+        train_names = [label["image_name"] for label in dl.train_labels]
+        test_images = dl.test_images
+        test_boxes = [label["boxes"] for label in dl.test_labels]
+        test_names = [label["image_name"] for label in dl.test_labels]
+        
+        # predict on train set
+        pred_boxes_list_train = net.predict(train_images)
+        # predict on test set
+        pred_boxes_list_test = net.predict(test_images)
+        
+        if is_plot:
+            print("Plotting on train set...")
+            plot_on_train(train_images, train_boxes, pred_boxes_list_train, train_names, TRAIN_PLOT_DIR, max_n=max_train)
+            print("Plotting on test set...")
+            plot_on_test(test_images, test_boxes, pred_boxes_list_test, test_names, TEST_PLOT_DIR)
+        
+        if is_mAP:
+            print("Computing mAP...")
+            mAP_train, APs_train = compute_mAP(pred_boxes_list_train, train_boxes)
+            mAP_test, APs_test = compute_mAP(pred_boxes_list_test, test_boxes, print_pr=True)
+            print("mAP on train set: {}".format(mAP_train))
+            print("mAP on test set: {}".format(mAP_test))
+            print("APs on train set: {}".format(APs_train))
+            print("APs on test set: {}".format(APs_test))
+        
+    main(is_plot=True, is_mAP=True, print_plot=100, max_train=100)
 

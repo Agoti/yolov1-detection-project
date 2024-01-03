@@ -22,13 +22,16 @@ def get_classes():
     return classes
                 
 
-def get_boxes(name, annotation_files):
+def get_boxes(name, annotation_files, more_data = False):
 
     annotation_file = name + ".xml"
     boxes = []
     if annotation_file in annotation_files:
         # read annotation file
-        annotation_path = os.path.join(ANNOTATION_DIR, annotation_file)
+        if more_data:
+            annotation_path = os.path.join(MORE_ANNOTATION_DIR, annotation_file)
+        else:
+            annotation_path = os.path.join(ANNOTATION_DIR, annotation_file)
         tree = ET.parse(annotation_path)
         root = tree.getroot()
         size = root.find('size')

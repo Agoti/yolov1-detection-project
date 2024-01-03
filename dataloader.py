@@ -25,7 +25,7 @@ class DataLoader(object):
         # used for saving and visualization
         self.batch_size = BATCH_SIZE
 
-    def load_data(self, max_file = 1000000):
+    def load_data(self, max_file = 1000000, more_data = False):
         print("Loading data...")
         image_files = os.listdir(IMAGE_DIR)
         annotation_files = os.listdir(ANNOTATION_DIR)
@@ -53,7 +53,27 @@ class DataLoader(object):
                 self.test_images.append(resized_image)
                 self.test_labels.append({"image_name": image_name, "boxes": resized_boxes,\
                                         "original_image": image, "original_boxes": boxes})
-                
+                        
+        if more_data:
+            print("Loading more data...")
+            image_files = os.listdir(MORE_IMAGE_DIR)
+            annotation_files = os.listdir(MORE_ANNOTATION_DIR)
+            for image_file in image_files:
+                count += 1
+                if count > max_file:
+                    break
+                image_name = image_file.split(".")[0]
+                image = cv2.imread(os.path.join(MORE_IMAGE_DIR, image_file))
+                # get class name and bounding box
+                boxes = get_boxes(image_name, annotation_files, more_data = True)
+                if boxes is None:
+                    continue
+                # resize image
+                resized_image, resized_boxes = image_resize2sq(image, boxes, INPUT_SIDE)
+                self.train_images.append(image)
+                self.train_labels.append({"image_name": image_name, "boxes": boxes,\
+                                            "resized_image": resized_image, "resized_boxes": resized_boxes})
+
         print("Loading data done.")
         print("Train set size: ", len(self.train_images))
         print("Test set size: ", len(self.test_images))
