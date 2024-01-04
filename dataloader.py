@@ -14,34 +14,43 @@ from yolo_utils import *
 from dataloader_utils import *
 from data_augmentation import *
 
+
 class DataLoader(object):
     def __init__(self):
+        # the list of images and labels
         self.train_images = []
         self.train_labels = []
         self.test_images = []
         self.test_labels = []
         self.dev_images = []
         self.dev_labels = []
-        # used for saving and visualization
         self.batch_size = BATCH_SIZE
 
     def load_data(self, max_file = 1000000, more_data = False):
+        """
+        Load data from VOC dataset
+        max_file: maximum number of files to load, set to a small number for debugging
+        more_data: whether to load the whole VOC2007 dataset
+        """
+
         print("Loading data...")
+        # list all image files and annotation files
         image_files = os.listdir(IMAGE_DIR)
         annotation_files = os.listdir(ANNOTATION_DIR)
+        # count for max_file
         count = 0
         for image_file in image_files:
+            # max_file
             count += 1
             if count > max_file:
                 break
+            # get image
             image_name = image_file.split(".")[0]
             image = cv2.imread(os.path.join(IMAGE_DIR, image_file))
             # get class name and bounding box
             boxes = get_boxes(image_name, annotation_files)
             if boxes is None:
                 continue
-            # resize image
-            # resized_image, resized_boxes = image_resize2sq(image, boxes, INPUT_SIDE)
             # split into train and test set
             if image_name < TRAIN_TEST_SPLIT:
                 resized_image, resized_boxes = image_resize2sq(image, boxes, INPUT_SIDE)
@@ -78,6 +87,7 @@ class DataLoader(object):
         print("Train set size: ", len(self.train_images))
         print("Test set size: ", len(self.test_images))
     
+    # DID NOT USE
     def split_train_dev(self, ratio = 0.1):
         # merge train and dev set
         self.train_images += self.dev_images
@@ -96,6 +106,7 @@ class DataLoader(object):
         print("Train set size: ", len(self.train_images))
         print("Dev set size: ", len(self.dev_images))
     
+    # DID NOT USE
     def save_data(self):
         # save bounding box as txt file
         # save label as npy file
@@ -144,6 +155,13 @@ class DataLoader(object):
         print("Saving test data done.")
     
     def pull_item(self, index, is_aug = False):
+        """
+        Pull an item at index from the dataset
+        index: index of the item
+        is_aug: whether to apply data augmentation
+        return: 
+            image(np.ndarray), label(np.array)
+        """
         image = self.train_images[index].copy()
         boxes = copy.deepcopy(self.train_labels[index]["boxes"])
         if not is_aug:
@@ -159,11 +177,18 @@ class DataLoader(object):
         return image, label
     
     def get_train_batch(self, is_aug = False):
-        # get a batch of training data
+        """
+        Get a batch of training data
+        is_aug: whether to apply data augmentation
+        return:
+            batch_images(list of np.ndarray)
+            batch_labels(list of np.array)
+        """
+
+        # shuffle the indices
         indices = np.arange(len(self.train_images))
         np.random.shuffle(indices)
-        # batch_images = []
-        # batch_labels = []
+        # get a batch of data, pull items one by one
         for i in range(0, len(indices), self.batch_size):
             batch_images = []
             batch_labels = []
@@ -175,17 +200,6 @@ class DataLoader(object):
 
             yield batch_images, batch_labels
     
-    # def get_test_batch(self):
-    #     # get a batch of test data
-    #     batch_images = []
-    #     batch_labels = []
-    #     for i in range(0, len(self.test_images), self.batch_size):
-    #         for j in range(i, min(i + self.batch_size, len(self.test_images))):
-    #             image, label = self.pull_item(j)
-    #             batch_images.append(image)
-    #             batch_labels.append(label)
-        
-    #         yield np.array(batch_images), np.array(batch_labels)
             
 
 if __name__ == "__main__":

@@ -1,3 +1,6 @@
+# model.py
+# Description: my detection model
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,11 +20,14 @@ class Net(nn.Module):
 
     def __init__(self, device="cuda"):
         super().__init__()
+
+        # device
         if device == "cuda":
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = torch.device("cpu")
 
+        # use pre-trained ResNet34
         resnet = models.resnet34(weights="ResNet34_Weights.IMAGENET1K_V1")
         # resnet = models.resnet34(pretrained=True)
         # remove the last two layers
@@ -58,6 +64,10 @@ class Net(nn.Module):
         self.to(self.device)
 
     def _initialize_weights(self):
+        """
+        Initialize the weights of the layers
+        """
+
         for m in self.yolo_neck.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_uniform_(m.weight)
@@ -68,6 +78,11 @@ class Net(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, inputs):
+        """
+        Forward propagation
+        inputs: a tensor of shape (batch_size, 3, 448, 448)
+        """
+
         x = self.resnet(inputs)
         x = self.yolo_neck(x)
         x = x.reshape(x.size()[0], -1)
@@ -76,8 +91,15 @@ class Net(nn.Module):
         return x
 
     def predict(self, test_images):
-        # test_images: list of ndarrays
-        # convert to a simple array
+        """
+        Predict the bounding boxes of the test images
+        First inference by batch, then convert labels to boxes(conf filter and nms)
+        Test images: a list of np.ndarray
+        return: 
+            list of list of bbox
+        """
+
+        # convert to a np array
         test_images = np.array(test_images)
         # pred = self.forward(test_images)
         # send test_images in batches

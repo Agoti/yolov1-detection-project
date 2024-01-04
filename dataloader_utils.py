@@ -7,6 +7,10 @@ from yolo_utils import *
 
 
 def get_classes():
+    """
+    Get all classes from VOC dataset
+    """
+
     # loop through annotation files
     classes = []
     annotation_files = os.listdir(ANNOTATION_DIR)
@@ -14,31 +18,44 @@ def get_classes():
         annotation_path = os.path.join(ANNOTATION_DIR, annotation_file)
         tree = ET.parse(annotation_path)
         root = tree.getroot()
+        # loop through bounding boxes
         for obj in root.iter('object'):
             cls = obj.find('name').text
+            # add new class to classes
             if cls not in classes:
                 classes.append(cls)
+
     print("Classes: ", classes)
     return classes
                 
 
 def get_boxes(name, annotation_files, more_data = False):
+    """
+    Get bounding boxes of an image from annotation file
+    name: image name
+    annotation_files: list of annotation files
+    more_data: whether to use the whole VOC2007 dataset
+    """
 
+    # name of annotation file
     annotation_file = name + ".xml"
     boxes = []
     if annotation_file in annotation_files:
         # read annotation file
+        # when more_data is True, read from MORE_ANNOTATION_DIR
         if more_data:
             annotation_path = os.path.join(MORE_ANNOTATION_DIR, annotation_file)
         else:
             annotation_path = os.path.join(ANNOTATION_DIR, annotation_file)
+        
+        # get image size
         tree = ET.parse(annotation_path)
         root = tree.getroot()
         size = root.find('size')
         width = int(size.find('width').text)
         height = int(size.find('height').text)
 
-        # get class name and bounding box
+        # get bounding box
         for obj in root.iter('object'):
             # bounding box
             xmlbox = obj.find('bndbox')
@@ -53,6 +70,7 @@ def get_boxes(name, annotation_files, more_data = False):
                 "width": width, "height": height,
                 "class": cls, "confidence": 1
             }
+            # calculate cx, cy, w, h
             box = bbox_to_center(box)
             # convert bounding box
             boxes.append(box)

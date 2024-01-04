@@ -4,6 +4,11 @@ import torch
 import torch.nn.functional as F
 
 def yolo_loss_sq(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
+    """
+    Squared loss for YOLO
+    Not vectorized. the speed is acceptable.
+    lambds are the weight for different losses
+    """
 
     loss = 0
     coord_loss = 0
@@ -12,10 +17,12 @@ def yolo_loss_sq(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
     class_loss = 0
     batch_size = pred.size()[0]
     n_grid_side = N_GRID_SIDE
+    # loop over the batch, grid, and bounding box
     for i in range(batch_size):
         for j in range(n_grid_side):
             for k in range(n_grid_side):
                 if target[i, j, k, 4] == 1:
+                    # calculate iou for both bounding boxes
                     bbox1_pred = {
                         "xmin": (pred[i, j, k, 0] + j) / n_grid_side - pred[i, j, k, 2] / 2,
                         "ymin": (pred[i, j, k, 1] + k) / n_grid_side - pred[i, j, k, 3] / 2,
@@ -36,6 +43,8 @@ def yolo_loss_sq(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
                     }
                     iou1 = iou(bbox1_pred, bbox_target)
                     iou2 = iou(bbox2_pred, bbox_target)
+                    # use the bounding box with higher iou to calculate object loss and coordinate loss
+                    # the lower iou is used to calculate no-object loss
                     if iou1 > iou2:
                         coord_loss = coord_loss + lambd_coord * (\
                             torch.sum((pred[i, j, k, 0:2] - target[i, j, k, 0:2]) ** 2) +\
@@ -48,8 +57,10 @@ def yolo_loss_sq(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
                             torch.sum((pred[i, j, k, 7:9].sqrt() - target[i, j, k, 7:9].sqrt()) ** 2))
                         obj_loss = obj_loss + (pred[i, j, k, 9] - iou2) ** 2
                         noobj_loss = noobj_loss + lambd_noobj * (pred[i, j, k, 4] - iou1) ** 2
+                    # class loss
                     class_loss = class_loss + torch.sum((pred[i, j, k, 10:] - target[i, j, k, 10:]) ** 2)
                 else:
+                    # if gt is not present, calculate no-object loss
                     noobj_loss = noobj_loss + lambd_noobj * (pred[i, j, k, 4] - target[i, j, k, 4]) ** 2
                     noobj_loss = noobj_loss + lambd_noobj * (pred[i, j, k, 9] - target[i, j, k, 9]) ** 2
 
@@ -58,6 +69,9 @@ def yolo_loss_sq(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
 
 
 def yolo_loss_sqvec(pred, target, lambd_coord=5, lambd_noobj=0.5):
+    """
+    vectorization attempt but failed
+    """
     batch_size, n_grid_side = pred.size(0), pred.size(1)
     
     # Extract coordinates and sizes from prediction and target tensors
@@ -134,6 +148,10 @@ def yolo_loss_sqvec(pred, target, lambd_coord=5, lambd_noobj=0.5):
     return loss / batch_size
 
 def iou_vectorized(xmin1, ymin1, xmax1, ymax1, xmin2, ymin2, xmax2, ymax2):
+    """
+    vectorized version of iou
+    """
+
     # Intersection
     xmin_inter = torch.maximum(xmin1, xmin2)
     ymin_inter = torch.maximum(ymin1, ymin2)
@@ -157,6 +175,14 @@ def iou_vectorized(xmin1, ymin1, xmax1, ymax1, xmin2, ymin2, xmax2, ymax2):
     return iou
 
 def yolo_loss_be(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
+    """
+    A binary cross entropy plus iou version of yolo loss
+    pred: predicted label
+    target: ground truth label
+    lambds: weights for different losses
+    It's not vectorized. The speed is acceptable.
+    """
+
     loss = 0
     coord_loss = 0
     obj_loss = 0
@@ -164,10 +190,12 @@ def yolo_loss_be(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
     class_loss = 0
     batch_size = pred.size()[0]
     n_grid_side = N_GRID_SIDE
+    # loop over the batch, grid, and bounding box
     for i in range(batch_size):
         for j in range(n_grid_side):
             for k in range(n_grid_side):
                 if target[i, j, k, 4] == 1:
+                    # calculate iou for both bounding boxes
                     bbox1_pred = {
                         "xmin": (pred[i, j, k, 0] + j) / n_grid_side - pred[i, j, k, 2] / 2,
                         "ymin": (pred[i, j, k, 1] + k) / n_grid_side - pred[i, j, k, 3] / 2,
@@ -188,14 +216,18 @@ def yolo_loss_be(pred, target, lambd_coord = 5, lambd_noobj = 0.5):
                     }
                     iou1 = iou(bbox1_pred, bbox_target)
                     iou2 = iou(bbox2_pred, bbox_target)
+                    # use the bounding box with higher iou to calculate object loss and coordinate loss
+                    # NOTE: did not penalize the confidence of the other bounding box
                     if iou1 > iou2:
                         coord_loss += 1 - iou1
                         obj_loss += F.binary_cross_entropy(pred[i, j, k, 4], target[i, j, k, 4])
                     else:
                         coord_loss += 1 - iou2
                         obj_loss += F.binary_cross_entropy(pred[i, j, k, 9], target[i, j, k, 9])
+                    # class loss
                     class_loss += F.binary_cross_entropy(pred[i, j, k, 10:], target[i, j, k, 10:])
                 else:
+                    # if gt is not present, calculate no-object loss
                     noobj_loss += F.binary_cross_entropy(pred[i, j, k, 4], target[i, j, k, 4])
                     noobj_loss += F.binary_cross_entropy(pred[i, j, k, 9], target[i, j, k, 9])
     
